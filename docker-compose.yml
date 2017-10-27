@@ -1,0 +1,87 @@
+version: '2'
+
+services:
+  nginx-server:
+    image: jwilder/nginx-proxy:latest
+    container_name: nginx-proxy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock:ro
+      - ./certs:/etc/nginx/certs
+      - /etc/nginx/vhost.d
+      - /usr/share/nginx/html
+    networks:
+      - back
+      - front
+  lets-encrypt:
+    image: jrcs/letsencrypt-nginx-proxy-companion:latest
+    container_name: lets-encrypt
+    restart: always
+    depends_on:
+      - nginx-server
+    volumes:
+      - ./certs:/etc/nginx/certs:rw
+    volumes_from:
+      - nginx-server
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - back
+      - front
+  redis:
+    image: redis:latest
+    container_name: redis
+    restart: always
+    networks:
+      - back
+  postgres:
+    image: postgres:10
+    container_name: postgres
+    restart: always
+    volumes:
+      - /var/run/postgresql
+      - ./postgres-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: root
+      POSTGRES_PASSWORD:
+    networks:
+      - back
+  bitiment:
+    image: andbobsyouruncle/bitiment:latest
+    command: bash -c "rails-init && /sbin/my_init"
+    container_name: bitiment
+    restart: always
+    networks:
+      - front
+      - back
+    environment:
+      - VIRTUAL_HOST=${BITIMENT_HOSTNAME}
+      - VIRTUAL_PORT=443
+      - LETSENCRYPT_HOST=${BITIMENT_HOSTNAME}
+      - LETSENCRYPT_EMAIL=${BITIMENT_SITE_EMAIL}
+      - SECRET_KEY_BASE=${BITIMENT_SECRET_KEY_BASE}
+  bitiment-updates:
+    image: andbobsyouruncle/bitiment:latest
+    command: bash -c "resque-jobs"
+    container_name: bitiment-jobs
+    restart: always
+    networks:
+      - front
+      - back
+
+volumes:
+  data:
+    driver: local
+  logs:
+    driver: local
+
+networks:
+  front:
+    external:
+      name: traffic_front
+  back:
+    external:
+      name: traffic_back

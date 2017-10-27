@@ -37,7 +37,7 @@ gem 'sentimental'
 
 gem 'resque'
 
-gem 'whenever', require: false
+gem 'whenever'
 
 group :development, :test do
   gem 'bootsnap', require: false

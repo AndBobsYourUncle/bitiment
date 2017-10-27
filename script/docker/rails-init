@@ -1,0 +1,10 @@
+export RAILS_ENV=production
+
+bundle exec whenever --update-crontab
+
+rake db:create
+rake db:migrate
+
+chown -R app:app /home/app/webapp
+
+rake assets:precompile
